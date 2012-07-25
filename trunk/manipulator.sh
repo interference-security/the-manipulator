@@ -1356,8 +1356,15 @@ cat cleanscannerinputlist.txt | while read i; do
 						then echo "ALERT: Status code "$reponseStatusCode" response";
 					fi 
 					#beginning of response diffing section
+					#cat ./dump > ./1clean.txt
+					#cat ./dumpfile > ./1diff.txt
+					#exit
 					
-					mydiff=`grep -f ./dump ./dumpfile -v`
+					#this was great but didnt work for large pages :-(
+					#mydiff=`grep -f ./dump ./dumpfile -v`
+					
+					mydiff=`diff ./dump ./dumpfile`
+
 
 					if [[ $mydiff != "" ]] ; then
 						#echo "DIFF: " $mydiff
