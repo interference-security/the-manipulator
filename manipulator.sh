@@ -99,9 +99,10 @@ while getopts l:c:t:nsqehx:d:bu:P:v:L:M:Q:I:T:C:rWS:ABjYfoD:FGHRZVUOKJENakmpwyz:
     q)  #use quote injection payloads 
         q=true
         ;;
-    r)  #use encoded quote injection payloads 
-        r=true
-        ;;
+#    r)  #set the range value
+#       r=true
+#	rangerVal=$OPTARG
+#       ;;
     e)  #use SQL time delay injection payloads 
         e=true
         ;;
@@ -378,20 +379,6 @@ if [ true != "$Q" ] ; then
 else
 	echo "Resuming scan at request $resumeline"
 fi
-
-#elementreuse=0
-#xpathCheck=`cat ./output/$safelogname.$safehostname.xpath 2>/dev/null` 
-#if [[ "$xpathCheck" != "" ]] ; then
-#	echo "XPath element hierachy found at ./output/$safelogname.$safehostname.xpath"
-#	echo -n "Enter n at the prompt to create a fresh element hierachy file or y to use the previously created element hierachy file: "
-#	read choice
-#	if [[ "$choice" == "y" || "$choice" == "Y" ]]; then
-#		echo "Re-using the element hierachy file at ./output/$safelogname.$safehostname.xpath"
-#		elementreuse=1		
-#	else 
-#		echo "Ignoring previous XPath element hierachy file"
-#	fi
-#fi
 
 rm ./aggoutputlog.txt 2>/dev/null
 rm ./alertmessage.txt 2>/dev/null
@@ -773,108 +760,6 @@ fi
 
 rm exceptionlist.txt 2>/dev/null
 
-#######Prep the param list section########
-
-#the output of this section will be a list of payloads called payloads.txt
-
-#clear down the payloads.txt list incase it has entries left in it
-rm payloads.txt 2>/dev/null
-
-##this section concatenates payload list files based on user input###
-
-#if [ true = "$s" ] ; then
-#	if [ true = "$D" ] ; then	
-#		cat ./payloads/stringpayloads.$dbms.txt | while read quack; do
-#			echo $quack >> payloads.txt
-#		done
-#	else
-#		cat ./payloads/stringpayloads.txt | while read quack; do
-#			echo $quack >> payloads.txt
-#		done
-#	fi
-#fi
-
-#if [ true = "$n" ] ; then
-#	cat ./payloads/numericpayloads.txt | while read quack; do
-#		echo $quack >> payloads.txt
-#	done
-#fi	
-
-#if [ true = "$e" ] ; then
-#	if [ true = "$D" ] ; then	
-#		cat ./payloads/timedelaypayloads.$dbms.txt | while read quack; do
-#			echo $quack | replace "X" $timedelay >> payloads.txt
-#		done
-#	else
-#		cat ./payloads/timedelaypayloads.txt | while read quack; do
-#			echo $quack | replace "X" $timedelay >> payloads.txt
-#		done
-#	fi
-#fi
-
-#if [ true = "$b" ] ; then
-#	cat ./payloads/commandpayloads.txt | while read quack; do		
-#		echo $quack | replace "X" $timedelay >> payloads.txt
-#	done
-#fi
-
-#if [ true = "$q" ] ; then
-#	cat ./payloads/quotepayloads.txt | while read quack; do
-#		echo $quack >> payloads.txt
-#	done
-#fi
-
-#if [ true = "$j" ] ; then
-#	cat ./payloads/all_attacks.txt | while read quack; do
-#		echo $quack >> payloads.txt
-#	done
-#fi
-
-#if [ true = "$r" ] ; then
-#	cat ./payloads/encodedquotepayloads.txt | while read quack; do
-#		echo $quack >> payloads.txt
-#	done
-#fi
-
-#if [ true = "$Y" ] ; then 
-#	cat ./payloads/xsspayloads.txt | while read quack; do
-#		echo $quack >> payloads.txt
-#	done
-#fi
-
-# this code scans through a custom payload list and replaces 'X' with the $timedelay value:
-# this allows users to specifiy their own timedelay sqli payloads:
-#if [ true = "$C" ] ; then
-#	cat $custompayloadlist | while read quack; do
-#		echo $quack | replace "X" $timedelay >> payloads.txt
-#	done
-#fi
-
-#flatten this down just in case theres an old version lying about:
-#rm nullpayloads.txt 2>/dev/null
-
-# this code prepends each payload with a %00, sometimes useful for filter evasion:
-#if [ true = "$A" ] ; then
-#	cat payloads.txt | while read quack; do
-#		echo "%00"$quack >> nullpayloads.txt
-#	done
-#	cat nullpayloads.txt > payloads.txt
-#	rm nullpayloads.txt 2>/dev/null
-#fi
-
-# this code prepends each payload with a %0d%0a, sometimes useful for filter evasion:
-#if [ true = "$B" ] ; then
-#	cat payloads.txt | while read quack; do
-#		echo "%0d%0a"$quack >> nullpayloads.txt
-#	done
-#	cat nullpayloads.txt > payloads.txt
-#	rm nullpayloads.txt 2>/dev/null
-#fi
-
-#totalpayloads=`wc -l payloads.txt | cut -d " " -f 1`
-#echo "Payload list created with $totalpayloads entries" 
-
-
 #MANDATORY URL connection testing routine:
 if [ false = "$G" ] ; then
 #check to ensure a target has been defined:
@@ -1196,25 +1081,31 @@ cat cleanscannerinputlist.txt | while read i; do
 	#this flag will track which param we are fuzzing (lets initialise it down to 0): 	
 	paramflag=0
 	#this sets the + and - range of numeric values
-	ranger=5
+	if [ true = "$r" ] ; then 
+		ranger=$rangerVal #this has already been set and can be user-controlled via the -r switch
+	else
+		ranger=5
+	fi
 	fullrange=$((ranger+ranger))
 	fullrange=$((fullrange+1))
 	
 							
 	##BEGINING OF PER-PARAMETER LOOP
 	for paramstring in ${paramsarray[*]}; do
-		manipulate=0
 		#echo "paramstring: $paramstring"
 		rm ./numlist.txt 2>/dev/null
 		#work out the name and value of the current parameter:
 		pval=`echo $paramstring | cut -d "=" -f2`
 		pname=`echo $paramstring | cut -d "=" -f1`
+
+		if [ true = "$Z" ] ; then echo "DEBUG! pname: "$pname; fi
+		if [ true = "$Z" ] ; then echo "DEBUG! pval: "$pval; fi
+
 		#does the current parameter value look like a number?:
 		string=`echo "$pval" | grep -o "[0-9]*"`
 		if [[ "$string" != "" ]] ; then
 			if [[ "$string" == "$pval" ]] ; then
-				manipulate=1
-				echo "Param $pname appears to be a number"
+				echo "Param $pname appears to have a numeric value: $pval"
 				op=0		
 				while (($op<$ranger)) ; do
 					op=$((op+1))
@@ -1229,9 +1120,14 @@ cat cleanscannerinputlist.txt | while read i; do
 					numericparam=$((pval+op))
 					echo "$numericparam" >> ./numlist.txt
 				done
+			else
+				echo "Param $pname does not appear to have a numeric value: $pval"
+				#we skip to the end of the per-param loop (after incrementing the paramflag) to avoid scanning this parameter:
+				((paramflag=$paramflag+1))
+				continue
 			fi
 		else
-			echo "Param $pname does not appear to be a number"
+			echo "Param $pname does not appear to have a numeric value: $pval"
 			#we skip to the end of the per-param loop (after incrementing the paramflag) to avoid scanning this parameter:
 			((paramflag=$paramflag+1))
 			continue			
@@ -1241,7 +1137,7 @@ cat cleanscannerinputlist.txt | while read i; do
 		
 		#((payloadcounter=0))		
 		##BEGINING OF PER-PAYLOAD LOOP
-		cat ./numlist.txt | while read payload; do
+		cat ./numlist.txt 2>/dev/null | while read payload; do
 			#payloadcounter is not used for logic, it just presents the user with the payload number			
 			payloadcounter=$((payloadcounter+1))
 			if [ true = "$Z" ] ; then echo "debug payload counter: $payloadcounter" ;fi 
@@ -1278,34 +1174,7 @@ cat cleanscannerinputlist.txt | while read i; do
 					if [ true = "$Z" ] ; then echo "DEBUG! output after payload injection: $output";fi
 					if [ true = "$Z" ] ; then echo "DEBUG! paramsarray at y: " ${paramsarray[$y]};fi
 					paramtotest=`echo ${paramsarray[$y]} | cut -d "=" -f1`
-					if [ true = "$Z" ] ; then echo "DEBUG! paramtotest: "$paramtotest;fi
-					#check to see if the current parameter should be skipped:
-					#for paramcheck in `cat parameters_to_skip.txt`; do
-					#	if [[ "$paramcheck" == "$paramtotest" ]]; then
-					#		continueflag=1
-					#		break
-					#	fi
-					#done
-					#this code looks to see if we've already scanned this parameter of this URI:
-					#if we have, the param gets skipped
-					#if [[ "$oldURL" == "$newURL" ]] ; then
-					#	if [ true = "$Z" ] ; then echo "DEBUG! URL MATCH Detected!" ; fi
-					#	for paramcheckold in `cat ./session/$safelogname.$safehostname.oldparamlist.txt`; do
-					#		#paramcheckold=`echo $paramcheck2| cut -d "=" -f 1`
-					#		if [ true = "$Z" ] ; then echo "DEBUG! checking if param matches $paramcheckold"; fi
-					#		continueflag=0
-					#		if [[ "$paramcheckold" == "$paramtotest" ]]; then
-					#			continueflag=1
-					#			alreadyscanned=1
-					#			if [ true = "$Z" ] ; then echo "DEBUG! Skipping: $paramtotest as it has already been fuzzed for page $page" ; fi				#
-					#			echo -n "."
-					#			break
-					#		fi
-					#	done
-					#	if (( $continueflag == 1 )); then
-					#		break
-					#	fi
-					#fi					
+					if [ true = "$Z" ] ; then echo "DEBUG! paramtotest: "$paramtotest;fi					
 				else #we are not injecting this parameter, so print it out as normal:
 					output=$output${paramsarray[$y]}
 				fi
@@ -1356,9 +1225,6 @@ cat cleanscannerinputlist.txt | while read i; do
 						then echo "ALERT: Status code "$reponseStatusCode" response";
 					fi 
 					#beginning of response diffing section
-					#cat ./dump > ./1clean.txt
-					#cat ./dumpfile > ./1diff.txt
-					#exit
 					
 					#this was great but didnt work for large pages :-(
 					#mydiff=`grep -f ./dump ./dumpfile -v`
@@ -1408,26 +1274,6 @@ cat cleanscannerinputlist.txt | while read i; do
 	((paramflag=$paramflag+1))
 	done
 ##END OF PER-URL LOOP:
-#code that stores the current URL and params for comparison against the next URL - this can be used to skip params already scanned
-
-#this code stores the uri (which is now old) in a text file:
-#this allows the old URI value to persist so that it can be compared with the new URI
-#this is used to check if we are scanning the same page, or a new page.
-oldURL=`echo $i | cut -d "?" -f 1`
-echo $oldURL > ./session/$safelogname.$safehostname.oldURL.txt
-
-#this code stores the stringofparams value (which is now old) in a text file
-# infact, a list is created with a parameter name on each new line:
-for dfg in $stringofparams; do
-	echo `echo $dfg | cut -d "=" -f1` >> ./session/$safelogname.$safehostname.oldparamlist.txt
-done
-
-#the list created in the above code grows with each URL as long as the pages match
-#as a result, it has to be sort|uniq-ed to remove duplicate entries
-cp ./session/$safelogname.$safehostname.oldparamlist.txt ./temp.txt
-cat ./temp.txt | grep . | sort | uniq > ./session/$safelogname.$safehostname.oldparamlist.txt
-rm ./temp.txt
-#cat ./session/$safelogname.$safehostname.oldparamlist.txt
 
 #this code resets the firstposturl flag which is used to handle POSTs with URLs
 if [ $firstPOSTURIURL == 2 ] ; then
@@ -1466,6 +1312,7 @@ done
 
 #fi
 # that 'fi' above is the end of the scan loop
+
 #if you get here, youve finished scanning so write nothing into the session file to clear it down:
 echo "" > ./session/$safehostname.session.txt
 
@@ -1661,13 +1508,7 @@ cat ./output/$safelogname-sorted-$safefilename.txt | while read aLINE ; do
 	echo "------------------------------------------------------------------" >> ./output/$safelogname-report-$safefilename.html
 	echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 done
-#mothballing this aspect of reporting for now. it looks crap.
-#echo "<H3>sqlifuzzer site analysis</H3>" >> ./output/$safelogname-report-$safefilename.html
-#cat ./session/$safelogname.$safehostname.siteanalysis.txt | while read bLINE ; do
-#	echo -n "."
-#	echo "$bLINE" >> ./output/$safelogname-report-$safefilename.html
-#	echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-#done
+
 echo "" > ./session/$safelogname.$safehostname.siteanalysis.txt	
 echo "</body>" >> ./output/$safelogname-report-$safefilename.html
 echo "</html>" >> ./output/$safelogname-report-$safefilename.html 
