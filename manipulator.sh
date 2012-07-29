@@ -1129,11 +1129,11 @@ cat cleanscannerinputlist.txt | while read i; do
 					op=0		
 					while (($op<$ranger)) ; do
 						op=$((op+1))
-						numericparam=$((pval-op))
+						numericparam=$((((pval+op))-$ranger))
 						if (($numericparam>0)) ; then
 							echo "$numericparam" >> ./numlist.txt
 						fi
-					done
+					done					
 					op=0
 					while (($op<$ranger)) ; do
 						op=$((op+1))
@@ -1165,8 +1165,11 @@ cat cleanscannerinputlist.txt | while read i; do
 			done				
 		fi
 		#echo "numlist:"
-		#cat ./numlist.txt 2>/dev/null
-		
+		if [[ "$m" == true ]] ; then
+			cat ./numlist.txt 2>/dev/null | sort | uniq > ./out1.txt
+			cp ./out1.txt ./numlist.txt
+		fi
+
 		#((payloadcounter=0))	
 		#clean down the ./responsediffs/tmp/ dir - this is where temporary, per parameter diffs are stored:	
 		rm ./responsediffs/tmp/* 2>/dev/null
@@ -1265,7 +1268,10 @@ cat cleanscannerinputlist.txt | while read i; do
 					
 
 					mydiff=`diff ./dump ./dumpfile`
-					if [[ $mydiff != "" ]] ; then
+					#echo "payload $payload"
+					#echo "pval $pval"
+
+					if [[ $mydiff != "" && "$payload" != "$pval" ]] ; then
 						#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
 						diff ./dump ./dumpfile > ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
  
@@ -1322,7 +1328,7 @@ cat cleanscannerinputlist.txt | while read i; do
 					newstring=`echo $pname=$fpayload`
 					output=`echo $params | replace $oldstring $newstring`
 										
-					shortdiff=`echo $mydiff | head -n 1`
+					shortdiff=`echo $mydiff | head -n 1 | egrep  -o  "^*.*\-.\-."`
 					#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
 					echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
 					if [[ $method != "POST" ]]; then #we're doing a get - simples 
@@ -1612,6 +1618,7 @@ rm ./params 2>/dev/null
 rm ./test 2>/dev/null
 rm ./diff.txt 2>/dev/null
 rm ./clean.txt 2>/dev/null
+rm ./out1.txt 2>/dev/null
 
 
 
