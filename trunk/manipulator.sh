@@ -65,11 +65,15 @@ z=false
 #################command switch parser section#########################
 #available: g,y (problematic),z
 
-while getopts l:c:t:nsqehx:d:bu:P:v:L:M:Q:I:T:C:rWS:ABjYfoD:FGHRZVUOKJENakmpwyz: namer; do
+while getopts l:c:t:nsqehx:d:bu:P:v:L:M:Q:I:T:C:r:WS:ABjYfoD:FGHRZVUOKJENakm:pwyz: namer; do
     case $namer in 
     l)  #path to burp log to parse
         burplog=$OPTARG
         ;;
+    m) # multi-log analysis mode
+	secondburplog=$OPTARG
+	m=true  
+	;;
     D)  #back end dbms
 	D=true
         dbms=$OPTARG
@@ -99,10 +103,10 @@ while getopts l:c:t:nsqehx:d:bu:P:v:L:M:Q:I:T:C:rWS:ABjYfoD:FGHRZVUOKJENakmpwyz:
     q)  #use quote injection payloads 
         q=true
         ;;
-#    r)  #set the range value
-#       r=true
-#	rangerVal=$OPTARG
-#       ;;
+    r)  #set the range value
+       r=true
+	rangerVal=$OPTARG
+        ;;
     e)  #use SQL time delay injection payloads 
         e=true
         ;;
@@ -208,9 +212,6 @@ while getopts l:c:t:nsqehx:d:bu:P:v:L:M:Q:I:T:C:rWS:ABjYfoD:FGHRZVUOKJENakmpwyz:
     N) # Filter Evasion Intermediary chars ' ' => '%2f%2a%0B%0C%0D%0A%09%2a%2f'
 	N=true  
 	;;
-    m) # UTF8 full-width quote ''' => '%EF%BC%87'
-	m=true  
-	;;
     p) # hash + noise + newline
 	p=true  
 	;;
@@ -227,18 +228,20 @@ done
 if [ true = "$h" ] || ["$1" == ""] 2>/dev/null ; then
 	echo "$0 - A wrapper for curl written in bash :-)"
 	echo "Written by Toby Clarke"
-	echo "Multi-walk analysis concept provided by Toby Shelswell"
+	echo "Multi-log analysis concept provided by Toby Shelswell"
 	echo "Required arguments:"
 	echo "  -t <host> Target hostname or IP address. No trailing slash."
 	echo "AND one of:"
 	echo "  -l <burplog> Path to the burp log file that will be parsed for requests. NOT a burp state file, but a log created in Burp > options > logging"
-	echo "  -I <input file to use> Parse an input file, not a burp log. Input files can be created using the -P switch"
+#	echo "  -I <input file to use> Parse an input file, not a burp log. Input files can be created using the -P switch"
 	echo "OR just:" 
 	echo "  -T <test URL> Test mode: define a test URL to attempt a connection to. Also may require -c <cookie> to connect"
-	echo "OR:"
-	echo "  -P <input file to create> Parse mode: create an input file from a burp log. This can subsequently be scanned using the -I option. Also requires -l <burplog> to parse"	
+#	echo "OR:"
+#	echo "  -P <input file to create> Parse mode: create an input file from a burp log. This can subsequently be scanned using the -I option. Also requires -l <burplog> to parse"	
 	echo "Various extra options:"
-	echo "  -W HTTP Method Swapping mode: GET requests are converted to POSTs and vice-versa. These new requests are tested IN ADDITION to the original."
+	echo "  -r <numeric range value> Alter the range value. This is the number of numeric values requested 'either side' of the detected value. By default the range is set to 5, resulting in requests from 995 to 1005 for a detected value of 1000."
+#	echo "  -W HTTP Method Swapping mode: GET requests are converted to POSTs and vice-versa. These new requests are tested IN ADDITION to the original."
+	echo "  -m <second burp log> Multi-log analysis mode. Walk the application with two different users and feed in two burp log files. The Manipulator will scan for parameter manipulation using parameter values from from walks 1 and 2 and diffing the responses. Note that this is not limited to numeric values."
 	echo "  -c <cookie> Add cookies. Enclose in single quotes: -c 'foo=bar'. Multiple cookies must be defined without spaces: -c 'foo=bar;sna=fu'"
 	echo "  -a <headername:headervalue> Add a header like this (basic HTTP auth) example: -a 'Authorization: Basic d2ViZ29hdDp3ZWJnb2F0'"	
 	echo "  -d <default error string> Define a detection string (inside double quotes) to identify a default error page"
@@ -249,13 +252,13 @@ if [ true = "$h" ] || ["$1" == ""] 2>/dev/null ; then
 	echo "  -T <Test URL> Test mode: define a test URL to attempt a connection to. Also may require -c <cookie> to connect"
 	echo "  -S <file containing parameters to skip, each parameter on a seperate line> Define one or many parameters NOT to scan"
 	echo "  -o Override the typical behaviour of excluding any requests which include the following phrases: logoff, logout, exit, signout, delete, signoff"
-	echo "  -F Override the typical behaviour of skipping parameters that have already been scanned. Increases scan time, but scans every parameter of every request"
+#	echo "  -F Override the typical behaviour of skipping parameters that have already been scanned. Increases scan time, but scans every parameter of every request"
 	echo "  -Z DEBUG mode - very verbose output - useful for script debugging"
 	echo "Some examples:"
 	echo "Scan based on a burp log:"
 	echo "  $0 -t http://www.foo.bar -l example-burp.log"
-	echo "Using Parse mode to create an input file from a burp log file:"
-	echo "  $0 -l example-burp.log -P example-burp.input"
+	echo "Using multi-log analysis mode to identify parameter values to test with:"
+	echo "  $0 -l ./logs/user-1.log -m ./logs/user-2.log"
 	echo "Runtime hints: CNTRL+c to skip to the end of the current loop iteration, CNTRL+z to stop scanning altogether, re-run with the same values to resume an incomplete scan"	
 	exit
 fi
@@ -266,6 +269,18 @@ if [[ true == "$a" ]] ; then
 	headertoset="$headertoadd"
 fi
 
+#error handling
+if [[ true == "$m" && "$burplog" == "" ]] ; then
+	echo "FATAL: I need a second burplog for Multi-log mode." >&2
+	echo "-l <burplog> -m <second burplog>">&2
+	exit
+fi
+
+#error handling
+if [[ true == "$m" && "$r" == true ]] ; then
+	echo "FATAL: Range value has no meaning for multi-log mode." >&2
+	exit
+fi
 
 #no burplog or input file specified:
 if [[ "$burplog" == "" && "$inputFile" == "" && "$testurl" == "" ]] ; then
@@ -675,6 +690,7 @@ if [[ true != "$I" && true != "$T" ]] ; then
 fi
 ### done parsing the burplog - the output is in scannerinputlist.txt ###
 
+
 #OPTIONAL URL connection testing routine:
 if [ true = "$T" ] ; then
 	echo "Testing connection to $testurl" 
@@ -979,6 +995,7 @@ cat cleanscannerinputlist.txt | while read i; do
 		page=`echo $i | cut -d " " -f 2 | cut -d "?" -f 1`
 	fi
 
+
 	#this section determines the parameters we will fuzz
 	#it outputs stringofparams which is a string that takes a querystring like 'q=1&f=2&n=3' and converts it to 'q=1 f=2 n=3'.
 	#TODO: the below does not account for normal POST requests? investigate? 
@@ -1097,45 +1114,62 @@ cat cleanscannerinputlist.txt | while read i; do
 		#work out the name and value of the current parameter:
 		pval=`echo $paramstring | cut -d "=" -f2`
 		pname=`echo $paramstring | cut -d "=" -f1`
+		comparepage=`echo $i | cut -d " " -f 2 | cut -d "?" -f 1`
 
+		if [ true = "$Z" ] ; then echo "DEBUG! page: "$comparepage; fi
 		if [ true = "$Z" ] ; then echo "DEBUG! pname: "$pname; fi
 		if [ true = "$Z" ] ; then echo "DEBUG! pval: "$pval; fi
 
-		#does the current parameter value look like a number?:
-		string=`echo "$pval" | grep -o "[0-9]*"`
-		if [[ "$string" != "" ]] ; then
-			if [[ "$string" == "$pval" ]] ; then
-				echo "Param $pname appears to have a numeric value: $pval"
-				op=0		
-				while (($op<$ranger)) ; do
-					op=$((op+1))
-					numericparam=$((pval-op))
-					if (($numericparam>0)) ; then
+		if [[ true != "$m" ]] ; then #normal usage, not multi-burplog parsing mode
+			#does the current parameter value look like a number?:
+			string=`echo "$pval" | grep -o "[0-9]*"`
+			if [[ "$string" != "" ]] ; then
+				if [[ "$string" == "$pval" ]] ; then
+					echo "Param $pname appears to have a numeric value: $pval"
+					op=0		
+					while (($op<$ranger)) ; do
+						op=$((op+1))
+						numericparam=$((pval-op))
+						if (($numericparam>0)) ; then
+							echo "$numericparam" >> ./numlist.txt
+						fi
+					done
+					op=0
+					while (($op<$ranger)) ; do
+						op=$((op+1))
+						numericparam=$((pval+op))
 						echo "$numericparam" >> ./numlist.txt
-					fi
-				done
-				op=0
-				while (($op<$ranger)) ; do
-					op=$((op+1))
-					numericparam=$((pval+op))
-					echo "$numericparam" >> ./numlist.txt
-				done
+					done
+				else
+					echo "Param $pname does not appear to have a numeric value: $pval"
+					#we skip to the end of the per-param loop (after incrementing the paramflag) to avoid scanning this parameter:
+					((paramflag=$paramflag+1))
+					continue
+				fi
 			else
 				echo "Param $pname does not appear to have a numeric value: $pval"
 				#we skip to the end of the per-param loop (after incrementing the paramflag) to avoid scanning this parameter:
 				((paramflag=$paramflag+1))
-				continue
+				continue			
 			fi
-		else
-			echo "Param $pname does not appear to have a numeric value: $pval"
-			#we skip to the end of the per-param loop (after incrementing the paramflag) to avoid scanning this parameter:
-			((paramflag=$paramflag+1))
-			continue			
+		else # multi burplog parsing mode is activated
+			echo "Searching second burplog for parameters called $pname"
+			cat $secondburplog | while read SEARCH ; do
+				if [[ $SEARCH =~ $equals && !($SEARCH =~ $colon) && ($SEARCH =~ $question) && !($SEARCH =~ $equalcheck) ]]; then
+					scan=`echo $SEARCH | grep -o "$pname=[^ ]*" | cut -d "=" -f2 | cut -d "&" -f1`
+					if [[ $scan != "" ]] ; then
+						echo "Match: $scan"
+						echo "$scan" >> ./numlist.txt
+					fi
+				fi
+			done				
 		fi
 		#echo "numlist:"
 		#cat ./numlist.txt 2>/dev/null
 		
-		#((payloadcounter=0))		
+		#((payloadcounter=0))	
+		#clean down the ./responsediffs/tmp/ dir - this is where temporary, per parameter diffs are stored:	
+		rm ./responsediffs/tmp/* 2>/dev/null
 		##BEGINING OF PER-PAYLOAD LOOP
 		cat ./numlist.txt 2>/dev/null | while read payload; do
 			#payloadcounter is not used for logic, it just presents the user with the payload number			
@@ -1213,7 +1247,7 @@ cat cleanscannerinputlist.txt | while read i; do
 					fi
 					if [ true = "$Z" ] ; then echo "Output: $output";fi
 					# beginning of request section
-					
+
 					#this calls the mainrequester function
 					mainrequester
 					
@@ -1229,47 +1263,98 @@ cat cleanscannerinputlist.txt | while read i; do
 					#this was great but didnt work for large pages :-(
 					#mydiff=`grep -f ./dump ./dumpfile -v`
 					
+
 					mydiff=`diff ./dump ./dumpfile`
-
-
 					if [[ $mydiff != "" ]] ; then
-						#echo "DIFF: " $mydiff
-						shortdiff=`echo $mydiff | head -n 1`
 						#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
-						diff ./dump ./dumpfile --suppress-common-lines > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
-						if [[ $method != "POST" ]]; then #we're doing a get - simples 
-							echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
-							echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output" ;
-							tput sgr0 # Reset attributes.
-						else
-							if (($firstPOSTURIURL>0)) ; then
-								if [ $firstPOSTURIURL == 1 ] ; then
-									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt ] $method URL: $uhostname$page"?"$static"??"$output" >> ./output/$safelogname$safefilename.txt
-									echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
-									tput sgr0 # Reset attributes.
-								else
-									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"??"$output" >> ./output/$safelogname$safefilename.txt
-									echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
-									tput sgr0 # Reset attributes.
-								fi
-							elif [ "$multipartPOSTURL" == 1 ] ; then
-								#multipart post
-								echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"???"$output" >> ./output/$safelogname$safefilename.txt
-								echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
+						diff ./dump ./dumpfile > ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
+ 
+						if [[ "$m" == true ]] ; then
+							shortdiff=`echo $mydiff | head -n 1`
+							#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
+							echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
+							if [[ $method != "POST" ]]; then #we're doing a get - simples 
+								echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
+								echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output" ;
 								tput sgr0 # Reset attributes.
 							else
-								#normal post
-								echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
-								echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
-								tput sgr0 # Reset attributes.
+								if (($firstPOSTURIURL>0)) ; then
+									if [ $firstPOSTURIURL == 1 ] ; then
+										echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt ] $method URL: $uhostname$page"?"$static"??"$output" >> ./output/$safelogname$safefilename.txt
+										echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
+										tput sgr0 # Reset attributes.
+									else
+										echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"??"$output" >> ./output/$safelogname$safefilename.txt
+										echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
+										tput sgr0 # Reset attributes.
+									fi
+								elif [ "$multipartPOSTURL" == 1 ] ; then
+									#multipart post
+									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"???"$output" >> ./output/$safelogname$safefilename.txt
+									echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
+									tput sgr0 # Reset attributes.
+								else
+									#normal post
+									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
+									echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
+									tput sgr0 # Reset attributes.
+								fi
 							fi
 						fi
+					fi		
 					((reqcount=$reqcount+1))
-					#end of response lenth diffing subsection
-					fi
 				fi						
 			done
+		##END OF PER-PAYLOAD LOOP:
 		done
+		if [[ true != "$m" ]]; then	
+			myone=`ls ./responsediffs/tmp/`
+			mytwo=`ls ./responsediffs/tmp/ | head -n1`
+			for i in $myone ; do 
+				comp=`cmp ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
+				if [[ $comp != "" ]] ; then
+					mydiff=`diff ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
+										
+					((payloadnumber=`echo $i | cut -d "-" -f 10`))
+					fpayload=`head -n "$payloadnumber" ./numlist.txt | tail -n1`
+					
+					oldstring=`echo $pname=$pval`
+					newstring=`echo $pname=$fpayload`
+					output=`echo $params | replace $oldstring $newstring`
+										
+					shortdiff=`echo $mydiff | head -n 1`
+					#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
+					echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
+					if [[ $method != "POST" ]]; then #we're doing a get - simples 
+						echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
+						echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output" ;
+						tput sgr0 # Reset attributes.
+					else
+						if (($firstPOSTURIURL>0)) ; then
+							if [ $firstPOSTURIURL == 1 ] ; then
+								echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt ] $method URL: $uhostname$page"?"$static"??"$output" >> ./output/$safelogname$safefilename.txt
+								echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
+								tput sgr0 # Reset attributes.
+							else
+								echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"??"$output" >> ./output/$safelogname$safefilename.txt
+								echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
+								tput sgr0 # Reset attributes.
+							fi
+						elif [ "$multipartPOSTURL" == 1 ] ; then
+							#multipart post
+							echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"???"$output" >> ./output/$safelogname$safefilename.txt
+							echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
+							tput sgr0 # Reset attributes.
+						else
+							#normal post
+							echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
+							echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
+							tput sgr0 # Reset attributes.
+						fi
+					fi
+				fi
+			done
+		fi
 	##END OF PER-PARAMETER LOOP:
 	((paramflag=$paramflag+1))
 	done
