@@ -8,7 +8,75 @@ reqcount=0
 headertoset=''
 
 # function definitions
+encodeme()
+{
 
+inputbuffer=$encodeinput
+#modify at the SQL layer first
+if [ true = "$Y" ] ; then
+	inputbuffer=`echo $inputbuffer | replace " " "/*d*/"`
+fi
+
+if [ true = "$E" ] ; then
+	inputbuffer=`echo $inputbuffer | replace "=" " like "`
+fi
+
+if [ true = "$J" ] ; then #nesting
+	inputbuffer=`echo $inputbuffer | replace "select" "selselectect" | replace "union" "uniunionon" | replace "and" "anandd" | replace "order" "ororderder" |replace "or" "oorr" | replace "by" "bbyy" | replace "delay" "dedelaylay" | replace "dual" "dudualal" | replace "exec" "exexecec" | replace "from" "frfromom" | replace "having" "havhavinging" | replace "waitfor" "waitwaitforfor" | replace "case" "cacasese" | replace "when" "whwhenen" | replace "then" "ththenen" | replace "else" "elelsese" | replace "end" "eendnd" | replace "len" "llenen" | replace "ascii" "asasciicii" | replace "substring" "subsubstringstring"| replace "substr" "subsubstrstr" | replace "like" "lilikeke"`
+fi
+
+if [ true = "$U" ] ; then #case variation
+	inputbuffer=`echo $inputbuffer | replace "select" "sElEcT" | replace "union" "uNiOn" | replace "and" "aNd" | replace "or" "oR" | replace "order" "oRdEr" | replace "by" "bY" | replace "delay" "dElAy" | replace "dual" "dUaL" | replace "exec" "eXeC" | replace "from" "fRoM" | replace "having" "hAvInG" | replace "waitfor" "wAiTfOr" | replace "case" "cAsE" | replace "when" "wHeN" | replace "then" "tHeN" | replace "else" "eLsE" | replace "end" "eNd" | replace "len" "lEn" | replace "ascii" "aScIi" | replace "substr" "sUbStR" | replace "like" "lIkE"`
+fi
+
+if [ true = "$m" ] ; then #UTF-8 full-width single quote
+	inputbuffer=`echo $inputbuffer | replace "'" "%ef%bc%87"`
+fi
+
+if [ true = "$z" ] ; then #multi byte quote
+	inputbuffer=`echo $inputbuffer | replace "'" "%bf%27"`
+fi
+
+
+#URL encoding occurs unless we are doing URI unicode encoding 
+#if [ false = "$O" ] ; then  
+encodeoutput=`echo $inputbuffer | replace " " "%20" | replace "." "%2e" | replace "<" "%3c" | replace ">" "%3e" | replace "?" "%3f" | replace "+" "%2b" | replace "*" "%2a" | replace ";" "%3b" | replace ":" "%3a" | replace "(" "%28" | replace ")" "%29" | replace "," "%2c" | replace "/" "%2f" | replace "|" "%7c"` 
+#fi
+
+#replace URL encoded spaces with comments and intermediary characters
+if [ true = "$N" ] ; then
+	encodeoutput=`echo $encodeoutput | replace "%20" "%2f%2a%0B%0C%0D%0A%09%2a%2f"`
+fi
+
+#if [ true = "$O" ] ; then
+#	encodeoutput=`echo $encodeoutput | replace "select" "se%2f%2a%2a%2flect" | replace "union" "uni%2f%2a%2a%2fon" | replace "and" "an%2f%2a%2a%2fd" | replace "or" "o%2f%2a%2a%2fr" | replace "order" "ord%2f%2a%2a%2fer" | replace "by" "b%2f%2a%2a%2fy" | replace "delay" "del%2f%2a%2a%2fay" | replace "dual" "du%2f%2a%2a%2fal" | replace "exec" "ex%2f%2a%2a%2fec" | replace "from" "fr%2f%2a%2a%2fom" | replace "having" "hav%2f%2a%2a%2fing" | replace "waitfor" "wai%2f%2a%2a%2ftfor" | replace "case" "ca%2f%2a%2a%2fse" | replace "when" "wh%2f%2a%2a%2fen" | replace "then" "th%2f%2a%2a%2fen" | replace "else" "el%2f%2a%2a%2fse" | replace "end" "en%2f%2a%2a%2fd" | replace "len" "le%2f%2a%2a%2fn" | replace "ascii" "as%2f%2a%2a%2fcii" | replace "substr" "su%2f%2a%2a%2fbstr"`
+#fi
+
+if [ true = "$V" ] ; then #double URL encoding
+	encodeoutput=`echo $encodeoutput | replace "%" "%25"`
+fi
+
+if [ true = "$p" ] ; then #hash + noise + newline
+	encodeoutput=`echo $encodeoutput | replace "%20" "%234i5ugh4iuh%0a"`
+fi
+
+if [ true = "$w" ] ; then #comment + newline
+	encodeoutput=`echo $encodeoutput | replace "%20" "%2d%2d%0a"`
+fi
+
+#--------------
+
+#if [ true = "$O" ] ; then #uri unicode decoding
+#	uriinputdecode=$decodeoutput
+#  	uriunicode
+#  	decodeoutput=$uriinputdecoded
+#fi
+
+#URL decoding occurs unless we are doing URI unicode encoding 
+#if [ false = "$O" ] ; then  
+decodeoutput=`echo $decodeinput | replace "%20" " " | replace "%2e" "." | replace "%3c" "<" | replace "%3e" ">" | replace "%3f" "?" | replace "%2b" "+" | replace "%2a" "*" | replace "%3b" ";" | replace "%3a" ":" | replace "%28" "("| replace "%29" ")" | replace "%2c" "," | replace "%2f" "/" | replace "%7c" "|"`; 
+#fi
+}
 
 ##### END OF FUNCTION DEFINITIONS SECTION ######	
 #remove any residual files left lying about: 
@@ -1619,7 +1687,7 @@ rm ./test 2>/dev/null
 rm ./diff.txt 2>/dev/null
 rm ./clean.txt 2>/dev/null
 rm ./out1.txt 2>/dev/null
-
+rm ./out.txt 2>/dev/null
 
 
 echo "Done. HTML report written to ./output/$safelogname-report-$safefilename.html"
