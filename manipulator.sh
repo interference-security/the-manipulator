@@ -900,7 +900,7 @@ if [[ $method != "POST" ]]; then #we're doing a get - simples
 		echo $sessionStorage > ./session/$safelogname.$safehostname.sessionStorage.txt
 		# send a 'normal' request
 		and1eq1=`curl $i -o dump --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-		if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi
+		if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 		echo $and1eq1 > ./session/$safelogname.$safehostname.and1eq1.txt
 		echo "Testing URL $K of $entries $method $i"
 	fi
@@ -925,7 +925,7 @@ else	# we're doing a POST - not so simple...
 					and1eq1=`curl -d "$static" $uhostname$page"?"$params -o dump --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
 				fi
 				if [ true = "$Z" ] ; then echo "Request: $uhostname$page"?"$params"??"$static";fi
-				if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi
+				if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp LENGTH: $length TIME: $time";fi
 				#write set sessionStorage to 1 to prevent clean requests being sent for each param:
 				sessionStorage=1
 				echo $sessionStorage > ./session/$safelogname.$safehostname.sessionStorage.txt
@@ -935,7 +935,7 @@ else	# we're doing a POST - not so simple...
 			if [ $firstPOSTURIURL == 2 ] ; then #we want to fuzz the POST data params, NOT the POSTURI params
 				and1eq1=`curl -d "$params" $uhostname$page -o dump --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`;
 				if [ true = "$Z" ] ; then echo "Request: $uhostname$page"?"$params";fi
-				if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi
+				if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 				sessionStorage=1
 				echo $sessionStorage > ./session/$safelogname.$safehostname.sessionStorage.txt
 				echo $and1eq1 > ./session/$safelogname.$safehostname.and1eq1.txt
@@ -946,7 +946,7 @@ else	# we're doing a POST - not so simple...
 				and1eq2=`curl $uhostname$page $mparam -o dumpfile --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
 		else #just a normal POST:
 			and1eq1=`curl -d "$params" $uhostname$page -o dump --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-			if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi
+			if [ true = "$Z" ] ; then resp=`echo $and1eq1 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 			#write set sessionStorage to 1 to prevent clean requests being sent for each param:
 			sessionStorage=1
 			echo $sessionStorage > ./session/$safelogname.$safehostname.sessionStorage.txt
@@ -958,12 +958,12 @@ else	# we're doing a POST - not so simple...
 	if (($firstPOSTURIURL>0)) ; then
 		if [ $firstPOSTURIURL == 1 ] ; then #we want to fuzz the POSTURI params, NOT the data
 			and1eq2=`curl -d "$static" $uhostname$page"?"$output -o dumpfile --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq2 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi
+			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 			echo "$method URL: $K/$entries Param ("$((paramflag + 1 ))"/"$arraylength")": $paramtotest "Payload ("$payloadcounter"/"$totalpayloads"): $payload"	
 		fi
 		if [ $firstPOSTURIURL == 2 ] ; then #we want to fuzz the POST data params, NOT the POSTURI params
 			and1eq2=`curl -d "$output" $uhostname$page -o dumpfile --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq2 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi
+			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 			echo "$method URL: $K/$entries Param ("$((paramflag + 1 ))"/"$arraylength")": $paramtotest "Payload ("$payloadcounter"/"$totalpayloads"): $payload"
 		fi
 	elif [ "$multipartPOSTURL" == 1 ] ; then #we are in multipart form mode
@@ -972,15 +972,16 @@ else	# we're doing a POST - not so simple...
 		echo -n "--form \""$output\" | replace '&' '" --form "' > ./foo.txt
 		#TODO: re-implement the -H "$headertoset" option in the below:
 		and1eq2="`eval curl $uhostname$page "\`cat ./foo.txt\`" -o dumpfile --cookie $cookie $curlproxy $httpssupport -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`"
-		if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq2 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi  
+		if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi  
 		echo "$method URL: $K/$entries Param ("$((paramflag + 1 ))"/"$arraylength")": $paramtotest "Payload ("$payloadcounter"/"$totalpayloads"): $payload"
 	else #just a normal evil POST:
 		echo "$method URL: $K/$entries Param ("$((paramflag + 1 ))"/"$arraylength")": $paramtotest "Payload ("$payloadcounter"/"$totalpayloads"): $payload"
 		and1eq2=`curl -d "$output" $uhostname$page -o dumpfile --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-		if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq2 | cut -d ":" -f 3`; echo "DEBUG! STATUS: $resp TIME: $time";fi
+		if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 	fi
 fi
 #end of request function
+
 }
 
 ####### scanning loop #############
@@ -1123,38 +1124,38 @@ cat cleanscannerinputlist.txt | while read i; do
 	#if the current and last urls dont match, clear down the lists
 	#we want these lists to grow across a given URL, but re-start
 	#when a new URL comes along
-	if [[ true != "$F" ]]; then # ...unless F (override param skipping) is set:
-		if [[ "$oldURL" == "$newURL" ]] ; then
-			if [[ "$firstrunflag" == 0 || "$K" == "$entries" ]] ; then
-				echo "------------------" >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				echo "$newURL" >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				for dfg in $stringofparams; do
-					echo `echo $dfg | cut -d "=" -f1` >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				done
-				firstrunflag=1
-				#this branch is taken for the first and last URLs, otherwise these wouldent be captured in the siteanalysis log
-			fi
-		else
-			if [[ "$firstrunflag" == 0 || "$K" == "$entries" ]] ; then
-				echo "------------------" >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				echo "$newURL" >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				for dfg in $stringofparams; do
-					echo `echo $dfg | cut -d "=" -f1` >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				done
-				firstrunflag=1
-				#this branch is taken for the first and last URLs, otherwise these wouldent be captured in the siteanalysis log
-			else
-				#this branch is taken when a new URL comes along
-				#the below writes out the old URL and paramlist info to the siteanalysis log
-				
-				echo "------------------" >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				echo "$oldURL" >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				cat ./session/$safelogname.$safehostname.oldparamlist.txt >> ./session/$safelogname.$safehostname.siteanalysis.txt
-				#the below clears away the old paramlist
-				echo "" > ./session/$safelogname.$safehostname.oldparamlist.txt
-			fi
-		fi
-	fi
+	#if [[ true != "$F" ]]; then # ...unless F (override param skipping) is set:
+	#	if [[ "$oldURL" == "$newURL" ]] ; then
+	#		if [[ "$firstrunflag" == 0 || "$K" == "$entries" ]] ; then
+	#			echo "------------------" >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			echo "$newURL" >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			for dfg in $stringofparams; do
+	#				echo `echo $dfg | cut -d "=" -f1` >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			done
+	#			firstrunflag=1
+	#			#this branch is taken for the first and last URLs, otherwise these wouldent be captured in the siteanalysis log
+	#		fi
+	#	else
+	#		if [[ "$firstrunflag" == 0 || "$K" == "$entries" ]] ; then
+	#			echo "------------------" >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			echo "$newURL" >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			for dfg in $stringofparams; do
+	#				echo `echo $dfg | cut -d "=" -f1` >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			done
+	#			firstrunflag=1
+	#			#this branch is taken for the first and last URLs, otherwise these wouldent be captured in the siteanalysis log
+	#		else
+	#			#this branch is taken when a new URL comes along
+	#			#the below writes out the old URL and paramlist info to the siteanalysis log
+	#			
+	#			echo "------------------" >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			echo "$oldURL" >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			cat ./session/$safelogname.$safehostname.oldparamlist.txt >> ./session/$safelogname.$safehostname.siteanalysis.txt
+	#			#the below clears away the old paramlist
+	#			echo "" > ./session/$safelogname.$safehostname.oldparamlist.txt
+	#		fi
+	#	fi
+	#fi
 	#paramsarray stores the query string params
 	paramsarray=($stringofparams)
 	if [ true = "$Z" ] ; then echo "DEBUG! paramsarray: "${paramsarray[*]}; fi
@@ -1194,19 +1195,38 @@ cat cleanscannerinputlist.txt | while read i; do
 			if [[ "$string" != "" ]] ; then
 				if [[ "$string" == "$pval" ]] ; then
 					echo "Param $pname appears to have a numeric value: $pval"
+					##code block to deal with leading zeros##
+					iuu=0
+					outbuf=''
+					zerobuffer=''
+					stringlength=${#pval}
+					((stringlengthminus1=$stringlength-1))
+					while ((iuu<$stringlength)) ; do 
+						char=`echo "${pval:iuu:1}"`
+						if [[ "$char" == "0" ]] ; then
+							echo "Leading zero detected"
+							zerobuffer=$zerobuffer"0"
+						else
+							((iuu=$stringlength))	
+						fi
+						((iuu++))
+					done 
+					##end of code block to deal with leading zeros##
 					op=0		
 					while (($op<$ranger)) ; do
 						op=$((op+1))
 						numericparam=$((((pval+op))-$ranger))
 						if (($numericparam>0)) ; then
-							echo "$numericparam" >> ./numlist.txt
+							echo "$zerobuffer$numericparam" >> ./numlist.txt
+							if [ true = "$Z" ] ; then echo "DEBUG! numericparam: "$numericparam; fi
+
 						fi
 					done					
 					op=0
 					while (($op<$ranger)) ; do
 						op=$((op+1))
 						numericparam=$((pval+op))
-						echo "$numericparam" >> ./numlist.txt
+						echo "$zerobuffer$numericparam" >> ./numlist.txt
 					done
 				else
 					echo "Param $pname does not appear to have a numeric value: $pval"
