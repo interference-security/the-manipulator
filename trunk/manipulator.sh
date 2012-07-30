@@ -1207,6 +1207,8 @@ cat cleanscannerinputlist.txt | while read i; do
 							echo "Leading zero detected"
 							zerobuffer=$zerobuffer"0"
 						else
+							xval=`echo "${pval:iuu:99}"`
+							pval=$xval
 							((iuu=$stringlength))	
 						fi
 						((iuu++))
@@ -1219,7 +1221,6 @@ cat cleanscannerinputlist.txt | while read i; do
 						if (($numericparam>0)) ; then
 							echo "$zerobuffer$numericparam" >> ./numlist.txt
 							if [ true = "$Z" ] ; then echo "DEBUG! numericparam: "$numericparam; fi
-
 						fi
 					done					
 					op=0
@@ -1227,6 +1228,7 @@ cat cleanscannerinputlist.txt | while read i; do
 						op=$((op+1))
 						numericparam=$((pval+op))
 						echo "$zerobuffer$numericparam" >> ./numlist.txt
+						if [ true = "$Z" ] ; then echo "DEBUG! numericparam: "$numericparam; fi
 					done
 				else
 					echo "Param $pname does not appear to have a numeric value: $pval"
