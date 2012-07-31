@@ -78,6 +78,18 @@ decodeoutput=`echo $decodeinput | replace "%20" " " | replace "%2e" "." | replac
 #fi
 }
 
+htmlencodeme(){
+inputbuffer=$encodeinput
+#inputbuffer=$decodeinput
+encodeoutput=`echo $inputbuffer | replace ">" "&gt;" | replace "<" "&lt;"`
+decodeoutput=`echo $inputbuffer | replace "&gt;" ">" | replace "&lt;" "<"`
+}
+
+#decodeinput=$postdataparams
+#htmlencodeme
+#decparam=$decodeoutput
+
+
 ##### END OF FUNCTION DEFINITIONS SECTION ######	
 #remove any residual files left lying about: 
 rm cleanscannerinputlist.txt 2>/dev/null
@@ -298,8 +310,7 @@ if [ true = "$h" ] || ["$1" == ""] 2>/dev/null ; then
 	echo "Written by Toby Clarke"
 	echo "Multi-log analysis concept provided by Toby Shelswell"
 	echo "Required arguments:"
-	echo "  -t <host> Target hostname or IP address. No trailing slash."
-	echo "AND one of:"
+	echo "  -t <host> Target hostname. No trailing slash. Please include http:// or https:// prefix: (e.g. http://192.168.1.1)"
 	echo "  -l <burplog> Path to the burp log file that will be parsed for requests. NOT a burp state file, but a log created in Burp > options > logging"
 #	echo "  -I <input file to use> Parse an input file, not a burp log. Input files can be created using the -P switch"
 	echo "OR just:" 
@@ -318,7 +329,7 @@ if [ true = "$h" ] || ["$1" == ""] 2>/dev/null ; then
         echo "  -M <Search string> String to search for in session liveness check page. Replace spaces with periods: 'Welcome user Bob' should be 'Welcome.user.Bob'"
         echo "  -Q <Request number> Resume a halted scan at a given request number"        
 	echo "  -T <Test URL> Test mode: define a test URL to attempt a connection to. Also may require -c <cookie> to connect"
-	echo "  -S <file containing parameters to skip, each parameter on a seperate line> Define one or many parameters NOT to scan"
+#	echo "  -S <file containing parameters to skip, each parameter on a seperate line> Define one or many parameters NOT to scan"
 	echo "  -o Override the typical behaviour of excluding any requests which include the following phrases: logoff, logout, exit, signout, delete, signoff"
 #	echo "  -F Override the typical behaviour of skipping parameters that have already been scanned. Increases scan time, but scans every parameter of every request"
 	echo "  -Z DEBUG mode - very verbose output - useful for script debugging"
@@ -1260,13 +1271,12 @@ cat cleanscannerinputlist.txt | while read i; do
 			cp ./out1.txt ./numlist.txt
 		fi
 
-		#((payloadcounter=0))	
+		payloadcounter=0	
 		#clean down the ./responsediffs/tmp/ dir - this is where temporary, per parameter diffs are stored:	
 		rm ./responsediffs/tmp/* 2>/dev/null
 		##BEGINING OF PER-PAYLOAD LOOP
 		cat ./numlist.txt 2>/dev/null | while read payload; do
-			#payloadcounter is not used for logic, it just presents the user with the payload number			
-			payloadcounter=$((payloadcounter+1))
+			payloadcounter=$((payloadcounter+1))				
 			if [ true = "$Z" ] ; then echo "debug payload counter: $payloadcounter" ;fi 
 			# the output buffer will hold the final string of params including the injected param and the normal ones
 			# lets clear it down at the begining of the loop:
@@ -1362,13 +1372,16 @@ cat cleanscannerinputlist.txt | while read i; do
 					#echo "pval $pval"
 
 					if [[ $mydiff != "" && "$payload" != "$pval" ]] ; then
-						#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
-						diff ./dump ./dumpfile > ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
+						#this line writes out the difference between the responses from the 'clean' and 'evil' requests (used for reporting):
+						echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt 
+						#this line writes out the difference between the responses into the local /tmp/ dir (used for diff comparison):
+						echo $mydiff > ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
  
 						if [[ "$m" == true ]] ; then
-							shortdiff=`echo $mydiff | head -n 1`
+							#shortdiff=`echo $mydiff | head -n 1`
+							shortdiff="$pname=$payload" 
 							#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
-							echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
+							#echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
 							if [[ $method != "POST" ]]; then #we're doing a get - simples 
 								echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
 								echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output" ;
@@ -1409,9 +1422,11 @@ cat cleanscannerinputlist.txt | while read i; do
 			for i in $myone ; do 
 				comp=`cmp ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
 				if [[ $comp != "" ]] ; then
-					mydiff=`diff ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
-										
+					#mydiff=`diff ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
+					 
 					((payloadnumber=`echo $i | cut -d "-" -f 10`))
+					reqcount=`echo $i | cut -d "-" -f 11 | cut -d "." -f 1`
+					payloadcounter=$payloadnumber
 					fpayload=`head -n "$payloadnumber" ./numlist.txt | tail -n1`
 					
 					oldstring=`echo $pname=$pval`
@@ -1419,12 +1434,13 @@ cat cleanscannerinputlist.txt | while read i; do
 					output=`echo $params | replace $oldstring $newstring`
 										
 					#shortdiff=`echo $mydiff | head -n 1 | egrep  -o  "^*.*\-.\-."`
-					shortdiff=`echo $mydiff | head -n 1`
+					#shortdiff=`echo $mydiff | head -n 1 | tr " " "_"`
 
 					#shortdiff=`echo $mydiff | head -n 1`
+					shortdiff="$pname=$fpayload"
+
 
 					#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
-					echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
 					if [[ $method != "POST" ]]; then #we're doing a get - simples 
 						echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
 						echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output" ;
@@ -1523,7 +1539,7 @@ cat ./aggoutputlog.txt 2>/dev/null | sort -r | uniq > ./output/$safelogname-sort
 # code that parses the output .txt file and creates a nice html report:
 echo "<html>" >> ./output/$safelogname-report-$safefilename.html
 echo "<head>" >> ./output/$safelogname-report-$safefilename.html
-echo "<title>SQLifuzzer Results Page</title>" >> ./output/$safelogname-report-$safefilename.html
+echo "<title>The Manipulator Results Page</title>" >> ./output/$safelogname-report-$safefilename.html
 echo "<body bgcolor="Silver">" >> ./output/$safelogname-report-$safefilename.html
 echo "<H3>SQLifuzzer Test Results</H3>" >> ./output/$safelogname-report-$safefilename.html
 echo "Output file: ./output/$safelogname-sorted-$safefilename.txt" >> ./output/$safelogname-report-$safefilename.html
@@ -1533,12 +1549,12 @@ echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 echo "Time of scan: $(date)" >> ./output/$safelogname-report-$safefilename.html
 echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-echo "<H4>Aggregate Vulnerability List</H4>" >> ./output/$safelogname-report-$safefilename.html
-cat ./alertmessage.txt | while read iter ; do 
-	foo=`grep -c "$iter" ./aggoutputlog.txt` 
-	echo "$iter" "(""$foo"")" >> ./output/$safelogname-report-$safefilename.html
-	echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-done
+#echo "<H4>Aggregate Vulnerability List</H4>" >> ./output/$safelogname-report-$safefilename.html
+#cat ./alertmessage.txt | while read iter ; do 
+#	foo=`grep -c "$iter" ./aggoutputlog.txt` 
+#	echo "$iter" "(""$foo"")" >> ./output/$safelogname-report-$safefilename.html
+#	echo "<br>" >> ./output/$safelogname-report-$safefilename.html
+#done
 echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 mytest=`cat ./listofxpathelements.txt 2>/dev/null`
 if [[ "$mytest" != "" ]] ; then
@@ -1676,17 +1692,24 @@ cat ./output/$safelogname-sorted-$safefilename.txt | while read aLINE ; do
 			echo "</form> " >> ./output/$safelogname-report-$safefilename.html
 		fi
 	fi
-	if [[ "$message" =~ "DATA-EXTRACTED:" ]] ; then
-		echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-		respdiff=`echo $message | grep -o $safehostname.*` 
-		#echo "debug message=$message"
-		#echo "debug respdiff=$respdiff"
-		echo " <a href="./../responsediffs/$respdiff">View Extracted Data</a>" >> ./output/$safelogname-report-$safefilename.html
-		echo "<br>" >> ./output/$safelogname-report-$safefilename.html	
-	fi
-	if [[ "$message" =~ "LENGTH-DIFF:" ]] ; then
+	if [[ "$message" =~ "DIFF:" ]] ; then
 		echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 		respdiff=`echo $message | cut -d " " -f 4`
+		
+		#echo "debug message=$message"
+		#echo "debug respdiff=$respdiff"
+
+		preview=`cat ./responsediffs/$respdiff | grep -o "\-.\-.>.*" | cut -d " " -f3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18`
+
+		encodeinput=$preview
+		htmlencodeme
+		preview=$encodeoutput
+
+
+		echo "Preview: $preview" >> ./output/$safelogname-report-$safefilename.html
+		echo "<br>" >> ./output/$safelogname-report-$safefilename.html	
+		echo "<br>" >> ./output/$safelogname-report-$safefilename.html	
+		
 		echo " <a href="./../responsediffs/$respdiff">View Response Diff</a>" >> ./output/$safelogname-report-$safefilename.html
 		echo "<br>" >> ./output/$safelogname-report-$safefilename.html	
 	fi
