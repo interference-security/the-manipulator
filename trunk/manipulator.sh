@@ -1363,14 +1363,8 @@ cat cleanscannerinputlist.txt | while read i; do
 					fi 
 					#beginning of response diffing section
 					
-					#this was great but didnt work for large pages :-(
-					#mydiff=`grep -f ./dump ./dumpfile -v`
-					
-
 					mydiff=`diff ./dump ./dumpfile`
-					#echo "payload $payload"
-					#echo "pval $pval"
-
+					
 					if [[ $mydiff != "" && "$payload" != "$pval" ]] ; then
 						#this line writes out the difference between the responses from the 'clean' and 'evil' requests (used for reporting):
 						echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt 
@@ -1389,26 +1383,31 @@ cat cleanscannerinputlist.txt | while read i; do
 							else
 								if (($firstPOSTURIURL>0)) ; then
 									if [ $firstPOSTURIURL == 1 ] ; then
-										echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt ] $method URL: $uhostname$page"?"$static"??"$output" >> ./output/$safelogname$safefilename.txt
+										echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt ] $method URL: $uhostname$page"?"$static"??"$output" >> ./output/$safelogname$safefilename.txt
 										echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
 										tput sgr0 # Reset attributes.
 									else
-										echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"??"$output" >> ./output/$safelogname$safefilename.txt
+										echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"??"$output" >> ./output/$safelogname$safefilename.txt
 										echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
 										tput sgr0 # Reset attributes.
 									fi
 								elif [ "$multipartPOSTURL" == 1 ] ; then
 									#multipart post
-									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"???"$output" >> ./output/$safelogname$safefilename.txt
+									echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"???"$output" >> ./output/$safelogname$safefilename.txt
 									echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
 									tput sgr0 # Reset attributes.
 								else
 									#normal post
-									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
+									echo "[DIFF: $shortdiff REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
 									echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
 									tput sgr0 # Reset attributes.
 								fi
 							fi
+							original=`cat ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt | grep -o ".*\-.\-.>"| replace "--- >" "" | cut -d " " -f3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18`
+							preview=`cat ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt | grep -o "\-.\-.>.*" | cut -d " " -f3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18`
+						#echo "Original:   "$original
+						echo -e '\E[31;92m'"Difference: "$preview
+						tput sgr0 # Reset attributes.
 						fi
 					fi		
 					((reqcount=$reqcount+1))
@@ -1422,7 +1421,7 @@ cat cleanscannerinputlist.txt | while read i; do
 			for i in $myone ; do 
 				comp=`cmp ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
 				if [[ $comp != "" ]] ; then
-					#mydiff=`diff ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
+					mydiff=`diff ./responsediffs/tmp/$i ./responsediffs/tmp/$mytwo`
 					 
 					((payloadnumber=`echo $i | cut -d "-" -f 10`))
 					reqcount=`echo $i | cut -d "-" -f 11 | cut -d "." -f 1`
@@ -1468,6 +1467,12 @@ cat cleanscannerinputlist.txt | while read i; do
 							tput sgr0 # Reset attributes.
 						fi
 					fi
+					original=`cat ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt | grep -o ".*\-.\-.>"| replace "--- >" "" | cut -d " " -f3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18`
+					preview=`cat ./responsediffs/tmp/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt | grep -o "\-.\-.>.*" | cut -d " " -f3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18`
+					echo -e '\E[31;94m'"\033[1mOriginal:   "$original
+					tput sgr0 # Reset attributes.
+					echo -e '\E[31;94m'"\033[1mDifference: "$preview
+					tput sgr0 # Reset attributes.						
 				fi
 			done
 		fi
@@ -1502,16 +1507,15 @@ fi
 echo "$alertmessage" > ./alertmessage.txt 2>/dev/null
 
 if [[ $alertmessage != "" ]] ; then
-	echo "Update: Aggregated list of vulnerability types found:"
+	#echo "Update: Aggregated list of vulnerability types found:"
 		cat ./alertmessage.txt | while read iter ; do 
 		foo=`grep -c "$iter" ./aggoutputlog.txt` 
-		echo $iter "("$foo")" 
+		#echo $iter "("$foo")" 
 	done
 fi
 
 done
 
-#fi
 # that 'fi' above is the end of the scan loop
 
 #if you get here, youve finished scanning so write nothing into the session file to clear it down:
@@ -1541,7 +1545,7 @@ echo "<html>" >> ./output/$safelogname-report-$safefilename.html
 echo "<head>" >> ./output/$safelogname-report-$safefilename.html
 echo "<title>The Manipulator Results Page</title>" >> ./output/$safelogname-report-$safefilename.html
 echo "<body bgcolor="Silver">" >> ./output/$safelogname-report-$safefilename.html
-echo "<H3>SQLifuzzer Test Results</H3>" >> ./output/$safelogname-report-$safefilename.html
+echo "<H3>The Manipulator Test Results</H3>" >> ./output/$safelogname-report-$safefilename.html
 echo "Output file: ./output/$safelogname-sorted-$safefilename.txt" >> ./output/$safelogname-report-$safefilename.html
 echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 echo "Host scanned: $uhostname" >> ./output/$safelogname-report-$safefilename.html
@@ -1549,22 +1553,6 @@ echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 echo "Time of scan: $(date)" >> ./output/$safelogname-report-$safefilename.html
 echo "<br>" >> ./output/$safelogname-report-$safefilename.html
 echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-#echo "<H4>Aggregate Vulnerability List</H4>" >> ./output/$safelogname-report-$safefilename.html
-#cat ./alertmessage.txt | while read iter ; do 
-#	foo=`grep -c "$iter" ./aggoutputlog.txt` 
-#	echo "$iter" "(""$foo"")" >> ./output/$safelogname-report-$safefilename.html
-#	echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-#done
-echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-mytest=`cat ./listofxpathelements.txt 2>/dev/null`
-if [[ "$mytest" != "" ]] ; then
-	echo "<H4>XPath Injection Data</H4>" >> ./output/$safelogname-report-$safefilename.html
-	cat ./listofxpathelements.txt | while read bLINE ; do
-		echo "$bLINE" >> ./output/$safelogname-report-$safefilename.html
-		echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-	done
-	echo "<br>" >> ./output/$safelogname-report-$safefilename.html
-fi
 echo "<H4>Detailed Results</H4>" >> ./output/$safelogname-report-$safefilename.html
 echo "------------------------------------------------------------------" >> ./output/$safelogname-report-$safefilename.html
 echo "<br>" >> ./output/$safelogname-report-$safefilename.html
@@ -1699,14 +1687,21 @@ cat ./output/$safelogname-sorted-$safefilename.txt | while read aLINE ; do
 		#echo "debug message=$message"
 		#echo "debug respdiff=$respdiff"
 
+		original=`cat ./responsediffs/$respdiff | grep -o ".*\-.\-.>" | replace "--- >" "" | cut -d " " -f3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18`
 		preview=`cat ./responsediffs/$respdiff | grep -o "\-.\-.>.*" | cut -d " " -f3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18`
+
+		encodeinput=$original
+		htmlencodeme
+		original=$encodeoutput
 
 		encodeinput=$preview
 		htmlencodeme
 		preview=$encodeoutput
 
 
-		echo "Preview: $preview" >> ./output/$safelogname-report-$safefilename.html
+		echo "Original:   <font color="black"> $original </font>" >> ./output/$safelogname-report-$safefilename.html
+		echo "<br>" >> ./output/$safelogname-report-$safefilename.html	
+		echo "Difference: <font color="black"> $preview </font>" >> ./output/$safelogname-report-$safefilename.html
 		echo "<br>" >> ./output/$safelogname-report-$safefilename.html	
 		echo "<br>" >> ./output/$safelogname-report-$safefilename.html	
 		
