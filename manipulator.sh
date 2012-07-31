@@ -917,7 +917,7 @@ else	# we're doing a POST - not so simple...
 	# NOTE the below IF never gets executed, EXCEPT when doing timedelay or command injection.
 	# This is because length diff testing requests are sent by the EVIL send (the following IF)
 	# which commences with the comment "send an 'evil' POST request"
-	if [[ "$sessionStorage" == 0 && true = "$e" || true = "$b" ]] ; then
+	if [[ "$sessionStorage" == 0 ]] ; then
 		# send a 'normal' POST request
 		if (($firstPOSTURIURL>0)) ; then
 			if [ $firstPOSTURIURL == 1 ] ; then #we want to fuzz the POSTURI params, NOT the data
@@ -958,12 +958,12 @@ else	# we're doing a POST - not so simple...
 	if (($firstPOSTURIURL>0)) ; then
 		if [ $firstPOSTURIURL == 1 ] ; then #we want to fuzz the POSTURI params, NOT the data
 			and1eq2=`curl -d "$static" $uhostname$page"?"$output -o dumpfile --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
+			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq2 | cut -d ":" -f 3`; length=`echo $and1eq2 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 			echo "$method URL: $K/$entries Param ("$((paramflag + 1 ))"/"$arraylength")": $paramtotest "Payload ("$payloadcounter"/"$totalpayloads"): $payload"	
 		fi
 		if [ $firstPOSTURIURL == 2 ] ; then #we want to fuzz the POST data params, NOT the POSTURI params
 			and1eq2=`curl -d "$output" $uhostname$page -o dumpfile --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
+			if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq2 | cut -d ":" -f 3`; length=`echo $and1eq2 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 			echo "$method URL: $K/$entries Param ("$((paramflag + 1 ))"/"$arraylength")": $paramtotest "Payload ("$payloadcounter"/"$totalpayloads"): $payload"
 		fi
 	elif [ "$multipartPOSTURL" == 1 ] ; then #we are in multipart form mode
@@ -977,7 +977,7 @@ else	# we're doing a POST - not so simple...
 	else #just a normal evil POST:
 		echo "$method URL: $K/$entries Param ("$((paramflag + 1 ))"/"$arraylength")": $paramtotest "Payload ("$payloadcounter"/"$totalpayloads"): $payload"
 		and1eq2=`curl -d "$output" $uhostname$page -o dumpfile --cookie $cookie $curlproxy $httpssupport -H "$headertoset" -w "%{http_code}:%{size_download}:%{time_total}" 2>/dev/null`
-		if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq1 | cut -d ":" -f 3`; length=`echo $and1eq1 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
+		if [ true = "$Z" ] ; then resp=`echo $and1eq2 | cut -d ":" -f 1`; time=`echo $and1eq2 | cut -d ":" -f 3`; length=`echo $and1eq2 | cut -d ":" -f 2`; echo "DEBUG! STATUS: $resp Length: $length TIME: $time";fi
 	fi
 fi
 #end of request function
@@ -1377,22 +1377,22 @@ cat cleanscannerinputlist.txt | while read i; do
 								if (($firstPOSTURIURL>0)) ; then
 									if [ $firstPOSTURIURL == 1 ] ; then
 										echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt ] $method URL: $uhostname$page"?"$static"??"$output" >> ./output/$safelogname$safefilename.txt
-										echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
+										echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
 										tput sgr0 # Reset attributes.
 									else
 										echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"??"$output" >> ./output/$safelogname$safefilename.txt
-										echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
+										echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
 										tput sgr0 # Reset attributes.
 									fi
 								elif [ "$multipartPOSTURL" == 1 ] ; then
 									#multipart post
 									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"???"$output" >> ./output/$safelogname$safefilename.txt
-									echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
+									echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
 									tput sgr0 # Reset attributes.
 								else
 									#normal post
 									echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
-									echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
+									echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
 									tput sgr0 # Reset attributes.
 								fi
 							fi
