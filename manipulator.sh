@@ -1403,7 +1403,7 @@ cat cleanscannerinputlist.txt | while read i; do
 			done
 		##END OF PER-PAYLOAD LOOP:
 		done
-		if [[ true != "$m" ]]; then	
+		if [[ true != "$m" ]]; then # numeric range mode	
 			myone=`ls ./responsediffs/tmp/`
 			mytwo=`ls ./responsediffs/tmp/ | head -n1`
 			for i in $myone ; do 
@@ -1418,7 +1418,11 @@ cat cleanscannerinputlist.txt | while read i; do
 					newstring=`echo $pname=$fpayload`
 					output=`echo $params | replace $oldstring $newstring`
 										
-					shortdiff=`echo $mydiff | head -n 1 | egrep  -o  "^*.*\-.\-."`
+					#shortdiff=`echo $mydiff | head -n 1 | egrep  -o  "^*.*\-.\-."`
+					shortdiff=`echo $mydiff | head -n 1`
+
+					#shortdiff=`echo $mydiff | head -n 1`
+
 					#this line writes out the difference between the responses from the 'clean' and 'evil' requests: 
 					echo $mydiff > ./responsediffs/$safefilename-resdiff-$K-$payloadcounter-$reqcount.txt
 					if [[ $method != "POST" ]]; then #we're doing a get - simples 
@@ -1429,22 +1433,22 @@ cat cleanscannerinputlist.txt | while read i; do
 						if (($firstPOSTURIURL>0)) ; then
 							if [ $firstPOSTURIURL == 1 ] ; then
 								echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt ] $method URL: $uhostname$page"?"$static"??"$output" >> ./output/$safelogname$safefilename.txt
-								echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
+								echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$static"??"$output";
 								tput sgr0 # Reset attributes.
 							else
 								echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"??"$output" >> ./output/$safelogname$safefilename.txt
-								echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
+								echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"??"$output";
 								tput sgr0 # Reset attributes.
 							fi
 						elif [ "$multipartPOSTURL" == 1 ] ; then
 							#multipart post
 							echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"???"$output" >> ./output/$safelogname$safefilename.txt
-							echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
+							echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"???"$output"
 							tput sgr0 # Reset attributes.
 						else
 							#normal post
 							echo "[DIFF: $answer REQ:$K $safefilename-resdiff-$K-$payloadcounter-$reqcount.txt] $method URL: $uhostname$page"?"$output" >> ./output/$safelogname$safefilename.txt
-							echo -e '\E[31;48m'"\033[1m[LENGTH-DIFF: $answer REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
+							echo -e '\E[31;48m'"\033[1m[DIFF: $shortdiff REQ:$K]\033[0m $method URL: $uhostname$page"?"$output"
 							tput sgr0 # Reset attributes.
 						fi
 					fi
